@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Swap Money — PTC</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --yellow:#FFC61A;
+    --yellow-dim:#B8900F;
+    --yellow-soft:#FFE083;
+    --bg:#0a0a0a;
+    --card:#131313;
+    --card-2:#1b1b1b;
+    --line:#2a2a2a;
+    --text:#F5F5F0;
+    --sub:#9a9a94;
+    --green:#22c55e;
+    --red:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:'Segoe UI',-apple-system,Roboto,Helvetica,Arial,sans-serif;}
+  html,body{background:var(--bg);color:var(--text);}
+  body{padding-bottom:78px;overflow-x:hidden;min-height:100vh;}
+  ::selection{background:var(--yellow);color:#000;}
+
+  /* ---------- Header ---------- */
+  header{
+    padding:14px 18px 16px;
+    background:linear-gradient(180deg,#141414 0%, #0a0a0a 100%);
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:10px;
+    background:conic-gradient(from 220deg,var(--yellow),var(--yellow-soft),var(--yellow));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 14px rgba(255,198,26,.25);
+  }
+  .brand-mark svg{width:19px;height:19px;fill:#0a0a0a;}
+  .brand h1{font-size:16.5px;font-weight:800;letter-spacing:.2px;}
+  .brand .tag{font-size:10px;color:var(--yellow);font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+  .user-chip{
+    display:flex;align-items:center;gap:6px;
+    background:var(--card-2);border:1px solid var(--line);
+    padding:6px 10px;border-radius:999px;font-size:12px;color:var(--sub);
+  }
+  .user-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+
+  /* ---------- Pages ---------- */
+  .page{display:none;padding:18px 16px 10px;animation:fade .22s ease;}
+  .page.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- Balance Card (signature) ---------- */
+  .balance-card{
+    position:relative;
+    background:linear-gradient(155deg,#1c1a12 0%, #0f0e0a 60%, #0a0a0a 100%);
+    border:1px solid #3a301a;
+    border-radius:22px;
+    padding:22px 20px 20px;
+    overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  .balance-card::before{
+    content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;
+    background:radial-gradient(circle,rgba(255,198,26,.18),transparent 70%);
+  }
+  .balance-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2;}
+  .balance-label{font-size:12px;color:var(--sub);font-weight:600;letter-spacing:.3px;}
+  .coin-spin{width:30px;height:30px;animation:spin 3.5s linear infinite;flex-shrink:0;}
+  @keyframes spin{from{transform:rotateY(0);}to{transform:rotateY(360deg);}}
+  .balance-amt{font-size:38px;font-weight:800;letter-spacing:-.5px;margin-top:6px;position:relative;z-index:2;}
+  .balance-amt span{font-size:15px;color:var(--yellow);font-weight:700;margin-left:4px;}
+  .balance-stats{display:flex;gap:10px;margin-top:16px;position:relative;z-index:2;}
+  .bstat{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:9px 10px;}
+  .bstat b{display:block;font-size:15px;font-weight:800;color:var(--yellow);}
+  .bstat span{font-size:10.5px;color:var(--sub);}
+
+  .btn{
+    background:var(--yellow);color:#0a0a0a;border:none;
+    padding:14px 18px;border-radius:14px;font-weight:800;font-size:14.5px;
+    width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:.15s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn svg{width:17px;height:17px;fill:#0a0a0a;}
+  .btn.ghost{background:var(--card-2);color:var(--text);border:1px solid var(--line);}
+  .btn.ghost svg{fill:var(--text);}
+  .btn:disabled{opacity:.45;pointer-events:none;}
+
+  h3.section-title{font-size:14.5px;font-weight:800;margin:22px 0 4px;display:flex;align-items:center;gap:7px;}
+  h3.section-title svg{width:15px;height:15px;fill:var(--yellow);}
+  .section-sub{font-size:11.5px;color:var(--sub);margin-bottom:10px;}
+
+  /* ---------- Card list ---------- */
+  .card-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+  .card-item{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .card-item .icon-wrap{
+    width:38px;height:38px;border-radius:10px;background:var(--card-2);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .card-item .icon-wrap svg{width:18px;height:18px;fill:var(--yellow);}
+  .card-item .info{flex-grow:1;min-width:0;}
+  .card-item .info h4{font-size:13.5px;font-weight:700;}
+  .card-item .info p{font-size:11.5px;color:var(--sub);margin-top:2px;}
+  .card-item .info p.gain{color:var(--green);font-weight:700;}
+  .card-item .info p.loss{color:var(--red);font-weight:700;}
+  .pill{font-size:10.5px;color:var(--sub);background:var(--card-2);padding:4px 9px;border-radius:999px;border:1px solid var(--line);white-space:nowrap;}
+  .action-btn{
+    background:var(--yellow);color:#0a0a0a;border:none;
+    padding:9px 14px;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap;
+  }
+  .action-btn:disabled{background:var(--card-2);color:var(--sub);}
+
+  /* Ad progress ring */
+  .ad-progress{
+    width:36px;height:36px;flex-shrink:0;position:relative;
+  }
+  .ad-progress svg{transform:rotate(-90deg);}
+  .ad-progress circle{fill:none;stroke-width:3;}
+  .ad-progress .bg{stroke:var(--line);}
+  .ad-progress .fg{stroke:var(--yellow);stroke-linecap:round;transition:stroke-dashoffset .2s linear;}
+  .ad-progress .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--yellow);}
+
+  /* ---------- Referral ---------- */
+  .ref-card{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center;}
+  .ref-card p.lbl{font-size:12px;color:var(--sub);margin-bottom:10px;}
+  .ref-input-row{display:flex;gap:8px;}
+  .ref-input-row input{
+    flex:1;padding:11px 12px;background:var(--bg);border:1px solid var(--line);
+    border-radius:10px;color:var(--text);font-size:12px;outline:none;
+  }
+  .copy-btn{background:var(--yellow);border:none;border-radius:10px;padding:0 14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .copy-btn svg{width:16px;height:16px;fill:#0a0a0a;}
+  .ref-tiers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px;}
+  .ref-tier{background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;}
+  .ref-tier b{display:block;font-size:14px;color:var(--yellow);font-weight:800;}
+  .ref-tier span{font-size:9.5px;color:var(--sub);}
+
+  /* ---------- Leaderboard ---------- */
+  .lb-item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
+  .lb-item.me{border-color:var(--yellow);background:linear-gradient(90deg,rgba(255,198,26,.08),transparent);}
+  .rank-badge{
+    width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;background:var(--card-2);color:var(--sub);flex-shrink:0;
+  }
+  .rank-badge.gold{background:linear-gradient(135deg,#FFD54A,#B8900F);color:#0a0a0a;}
+  .rank-badge.silver{background:linear-gradient(135deg,#d8d8d8,#8a8a8a);color:#0a0a0a;}
+  .rank-badge.bronze{background:linear-gradient(135deg,#cd8a52,#8a5a2e);color:#0a0a0a;}
+  .lb-info{flex-grow:1;}
+  .lb-info h4{font-size:13.5px;font-weight:700;}
+  .lb-info span{font-size:11px;color:var(--sub);}
+  .lb-amt{font-weight:800;color:var(--yellow);font-size:13.5px;}
+
+  /* ---------- Withdraw ---------- */
+  .form-group{margin-bottom:14px;}
+  .form-group label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px;font-weight:600;}
+  .form-group select,.form-group input{
+    width:100%;padding:13px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;color:var(--text);outline:none;font-size:13.5px;
+  }
+  .form-group select:focus,.form-group input:focus{border-color:var(--yellow);}
+  .min-note{font-size:11.5px;color:var(--sub);background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:16px;display:flex;gap:8px;align-items:center;}
+  .min-note svg{width:14px;height:14px;fill:var(--yellow);flex-shrink:0;}
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
+    background:var(--card-2);border:1px solid var(--yellow);color:var(--text);
+    padding:12px 18px;border-radius:12px;font-size:13px;font-weight:600;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;
+    transition:.25s;z-index:200;max-width:88%;text-align:center;display:flex;align-items:center;gap:8px;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #toast svg{width:15px;height:15px;fill:var(--yellow);flex-shrink:0;}
+
+  /* ---------- Bottom Nav ---------- */
+  .bottom-nav{
+    position:fixed;bottom:0;left:0;width:100%;
+    background:#0d0d0d;border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;padding:8px 4px 10px;z-index:100;
+  }
+  .nav-item{
+    background:none;border:none;color:var(--sub);font-size:10px;font-weight:700;
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
+    width:20%;padding:6px 0;border-radius:10px;transition:.15s;
+  }
+  .nav-item svg{width:20px;height:20px;fill:var(--sub);transition:.15s;}
+  .nav-item.active{color:var(--yellow);}
+  .nav-item.active svg{fill:var(--yellow);}
+
+  /* Empty state */
+  .empty{text-align:center;padding:30px 10px;color:var(--sub);font-size:12.5px;}
+  .empty svg{width:30px;height:30px;fill:var(--line);margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 2.2L19 6v5c0 4.5-3 8.7-7 9.9C8 19.7 5 15.5 5 11V6l7-2.8z"/><path d="M11 15.2l-2.6-2.6L7 14l4 4 6-6-1.4-1.4z"/></svg>
+    </div>
+    <div>
+      <h1>Swap Money</h1>
+      <div class="tag">PTC Rewards</div>
+    </div>
+  </div>
+  <div class="user-chip"><span class="dot"></span><span id="userInfo">እንግዳ</span></div>
+</header>
+
+<!-- 1. HOME -->
+<section id="home" class="page active">
+  <div class="balance-card">
+    <div class="balance-top">
+      <div>
+        <div class="balance-label">ጠቅላላ ቀሪ ሂሳብ</div>
+        <div class="balance-amt"><span id="userBalance">0.00</span><span>ETB</span></div>
+      </div>
+      <svg class="coin-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#FFC61A"/><circle cx="12" cy="12" r="10" fill="none" stroke="#B8900F" stroke-width="1.5"/><text x="12" y="16" font-size="10" font-weight="800" text-anchor="middle" fill="#0a0a0a">ETB</text></svg>
+    </div>
+    <div class="balance-stats">
+      <div class="bstat"><b id="todayEarn">0</b><span>ዛሬ ያገኙት</span></div>
+      <div class="bstat"><b id="adsWatched">0</b><span>የታዩ Ads</span></div>
+      <div class="bstat"><b id="refCount">0</b><span>ጓደኞች</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <button class="btn" onclick="showPage('earn')">
+      <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z"/></svg>
+      ስራዎችን ይጀምሩ
+    </button>
+  </div>
+
+  <h3 class="section-title">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    የቅርብ ጊዜ እንቅስቃሴዎች
+  </h3>
+  <div class="card-list" id="activityList"></div>
+</section>
+
+<!-- 2. EARN -->
+<section id="earn" class="page">
+  <h3 class="section-title" style="margin-top:0;">
+    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z"/></svg>
+    ማስታወቂያዎችን በመመልከት ያግኙ
+  </h3>
+  <p class="section-sub">ማስታወቂያውን እስከመጨረሻው በማየት ሂሳብዎን ይጨምሩ። በቀን እስከ <b style="color:var(--yellow)">15</b> ማስታወቂያዎች ማየት ይችላሉ።</p>
+  <div class="card-list" id="adList"></div>
+
+  <h3 class="section-title">
+    <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+    ተጨማሪ ተግባራት
+  </h3>
+  <div class="card-list">
+    <div class="card-item">
+      <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
+      <div class="info"><h4>የቴሌግራም ቻናል ይቀላቀሉ</h4><p>+25 ETB · አንድ ጊዜ</p></div>
+      <button class="action-btn" onclick="joinChannel()">ተቀላቀል</button>
+    </div>
+    <div class="card-item">
+      <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 7h16v2H4zm0 7h10v2H4z"/></svg></div>
+      <div class="info"><h4>ዕለታዊ ቼክ-ኢን</h4><p id="checkinStatus">+5 ETB · ዛሬ ይሰብስቡ</p></div>
+      <button class="action-btn" id="checkinBtn" onclick="dailyCheckin()">ሰብስብ</button>
+    </div>
+  </div>
+</section>
+
+<!-- 3. INVITE -->
+<section id="invite" class="page">
+  <h3 class="section-title" style="margin-top:0;">
+    <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    ጓደኞችዎን ይጋብዙ
+  </h3>
+  <p class="section-sub">ለእያንዳንዱ ለሚጋብዟቸው ጓደኛ 20 ETB ቦነስ ያግኙ፣ እና ከነሱ ገቢ 5% ያገኛሉ።</p>
+
+  <div class="ref-card">
+    <p class="lbl">የእርስዎ የሪፈራል ሊንክ</p>
+    <div class="ref-input-row">
+      <input type="text" id="refLink" value="https://t.me/SwapMoneyBot?start=ref123" readonly>
+      <button class="copy-btn" onclick="copyRefLink()"><svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z"/></svg></button>
+    </div>
+    <div class="ref-tiers">
+      <div class="ref-tier"><b id="refBonus">0</b><span>ETB ቦነስ</span></div>
+      <div class="ref-tier"><b id="refActive">0</b><span>ንቁ ጓደኞች</span></div>
+      <div class="ref-tier"><b>5%</b><span>ገቢ ድርሻ</span></div>
+    </div>
+  </div>
+
+  <h3 class="section-title">የተጋበዙ ጓደኞች</h3>
+  <div class="card-list" id="referralList"></div>
+</section>
+
+<!-- 4. LEADERBOARD -->
+<section id="top" class="page">
+  <h3 class="section-title" style="margin-top:0;">
+    <svg viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 4L12 3l3.5 6L21 5l-2 11H5zm14 3H5v2h14v-2z"/></svg>
+    ከፍተኛ ገቢ ያገኙ
+  </h3>
+  <p class="section-sub">በዚህ ሳምንት የከፍተኛ ገቢ ደረጃ</p>
+  <div class="card-list" id="leaderboardList"></div>
+</section>
+
+<!-- 5. WITHDRAW -->
+<section id="withdraw" class="page">
+  <h3 class="section-title" style="margin-top:0;">
+    <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+    ገንዘብ ማውጫ
+  </h3>
+  <div class="min-note">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    አነስተኛ የማውጫ መጠን 500 ETB ነው። ጥያቄዎች በ24 ሰዓት ውስጥ ይካሄዳሉ።
+  </div>
+
+  <form id="withdrawForm" onsubmit="handleWithdraw(event)">
+    <div class="form-group">
+      <label>የክፍያ መንገድ ይምረጡ</label>
+      <select id="payMethod" required>
+        <option value="telebirr">Telebirr</option>
+        <option value="cbe">CBE Birr / የኢትዮጵያ ንግድ ባንክ</option>
+        <option value="boa">አቢሲኒያ ባንክ</option>
+        <option value="awash">አዋሽ ባንክ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>የስልክ / የባንክ ሂሳብ ቁጥር</label>
+      <input type="text" id="payAccount" placeholder="09... ወይም Account Number" required>
+    </div>
+    <div class="form-group">
+      <label>የምናወጣው መጠን (ETB)</label>
+      <input type="number" id="payAmount" placeholder="ምሳሌ: 500" min="500" required>
+    </div>
+    <button type="submit" class="btn" id="withdrawBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 4.5L18.5 19h-13L12 6.5z"/></svg>
+      የክፍያ ጥያቄ ላክ
+    </button>
+  </form>
+
+  <h3 class="section-title">የክፍያ ታሪክ</h3>
+  <div class="card-list" id="withdrawHistory"></div>
+</section>
+
+<!-- Toast -->
+<div id="toast"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg><span id="toastMsg"></span></div>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-page="home" onclick="showPage('home')">
+    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    <span>ቤት</span>
+  </button>
+  <button class="nav-item" data-page="earn" onclick="showPage('earn')">
+    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z"/></svg>
+    <span>Earn</span>
+  </button>
+  <button class="nav-item" data-page="invite" onclick="showPage('invite')">
+    <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    <span>ጋብዝ</span>
+  </button>
+  <button class="nav-item" data-page="top" onclick="showPage('top')">
+    <svg viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 4L12 3l3.5 6L21 5l-2 11H5zm14 3H5v2h14v-2z"/></svg>
+    <span>Top</span>
+  </button>
+  <button class="nav-item" data-page="withdraw" onclick="showPage('withdraw')">
+    <svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 4.5L18.5 19h-13L12 6.5z"/></svg>
+    <span>Withdraw</span>
+  </button>
+</nav>
+
+<script>
+/* ============ Backend config ============ */
+// ⚠️ ይህንን ከ Cloudflare Tunnel ያገኙትን URL ይተኩ (ደረጃ 8 ይመልከቱ)
+const API_BASE = '/api';
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+/* ============ Telegram WebApp ============ */
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if(tg){
+  tg.ready(); tg.expand();
+  if(tg.initDataUnsafe && tg.initDataUnsafe.user){
+    const user = tg.initDataUnsafe.user;
+    document.getElementById('userInfo').innerText = `@${user.username || user.first_name}`;
+    document.getElementById('refLink').value = `https://t.me/SwapMoneyBot?start=${user.id}`;
+  }
+}
+
+function apiHeaders(){
+  return {
+    'Content-Type': 'application/json',
+    'X-Telegram-Init-Data': tg ? tg.initData : ''
+  };
+}
+
+/* ============ State (now comes from server, not localStorage) ============ */
+let state = {
+  balance: 0, activity: [], adsWatchedToday: 0, totalAdsWatched: 0,
+  dailyAdLimit: 15, referrals: [], lastCheckin: null, channelJoined: false, withdrawals: []
+};
+
+async function fetchState(){
+  try{
+    const res = await fetch(`${API_BASE}/state`, { headers: apiHeaders() });
+    if(!res.ok) throw new Error('auth failed');
+    const data = await res.json();
+    state = Object.assign(state, data);
+    render();
+  }catch(e){
+    toast('⚠️ ከ Server ጋር መገናኘት አልተቻለም');
+    console.error(e);
+  }
+}
+
+/* ============ Navigation ============ */
+function showPage(pageId){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${pageId}"]`).classList.add('active');
+  if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  render();
+}
+
+/* ============ Toast ============ */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').innerText = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+/* ============ Render ============ */
+function render(){
+  document.getElementById('userBalance').innerText = state.balance.toFixed(2);
+
+  const today = state.activity.filter(a => new Date(a.date).toISOString().slice(0,10) === todayStr() && a.amount > 0)
+                               .reduce((s,a)=>s+a.amount,0);
+  document.getElementById('todayEarn').innerText = today.toFixed(0);
+  document.getElementById('adsWatched').innerText = state.totalAdsWatched;
+  document.getElementById('refCount').innerText = state.referrals.length;
+
+  // Activity list
+  const actList = document.getElementById('activityList');
+  if(state.activity.length === 0){
+    actList.innerHTML = emptyState('እስካሁን ምንም እንቅስቃሴ የለም');
+  }else{
+    actList.innerHTML = state.activity.slice(0,8).map(a => `
+      <div class="card-item">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24">${a.amount>=0?'<path d="M13 2L3 14h7v8l10-12h-7z"/>':'<path d="M19 13H5v-2h14v2z"/>'}</svg></div>
+        <div class="info">
+          <h4>${a.title}</h4>
+          <p class="${a.amount>=0?'gain':'loss'}">${a.amount>=0?'+':''}${a.amount.toFixed(2)} ETB</p>
+        </div>
+        <span class="pill">${a.status}</span>
+      </div>`).join('');
+  }
+
+  // Ad list
+  renderAdList();
+
+  // Check-in button state
+  const checkedToday = state.lastCheckin === todayStr();
+  document.getElementById('checkinBtn').innerText = checkedToday ? 'ተጠናቋል' : 'ሰብስብ';
+  document.getElementById('checkinBtn').disabled = checkedToday;
+  document.getElementById('checkinStatus').innerText = checkedToday ? '+5 ETB · ነገ ይመለሱ' : '+5 ETB · ዛሬ ይሰብስቡ';
+
+  // Referral list
+  const refList = document.getElementById('referralList');
+  document.getElementById('refBonus').innerText = (state.referrals.length*20);
+  document.getElementById('refActive').innerText = state.referrals.filter(r=>r.active).length;
+  if(state.referrals.length === 0){
+    refList.innerHTML = emptyState('እስካሁን የተጋበዙ ጓደኞች የሉም');
+  }else{
+    refList.innerHTML = state.referrals.map(r => `
+      <div class="card-item">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4z"/></svg></div>
+        <div class="info"><h4>${r.name}</h4><p>${r.active?'ንቁ':'በመጠባበቅ ላይ'}</p></div>
+        <span class="pill">+20 ETB</span>
+      </div>`).join('');
+  }
+
+  // Leaderboard (static demo data + user's own position)
+  renderLeaderboard();
+
+  // Withdraw history
+  const wList = document.getElementById('withdrawHistory');
+  if(state.withdrawals.length === 0){
+    wList.innerHTML = emptyState('እስካሁን ምንም የክፍያ ጥያቄ የለም');
+  }else{
+    wList.innerHTML = state.withdrawals.map(w => `
+      <div class="card-item">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2z"/></svg></div>
+        <div class="info"><h4>${w.method}</h4><p>${w.account}</p></div>
+        <span class="pill" style="color:${w.status==='በሂደት ላይ'?'var(--yellow)':'var(--sub)'};">${w.amount} ETB · ${w.status}</span>
+      </div>`).join('');
+  }
+
+}
+
+function emptyState(msg){
+  return `<div class="empty"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z"/></svg><div>${msg}</div></div>`;
+}
+
+/* ============ Ads (with real progress + daily cap) ============ */
+function renderAdList(){
+  const adList = document.getElementById('adList');
+  const remaining = state.dailyAdLimit - state.adsWatchedToday;
+  let html = '';
+  if(remaining <= 0){
+    html = emptyState('ለዛሬ የ' + state.dailyAdLimit + ' ማስታወቂያ ገደብ ላይ ደርሰዋል። ነገ ይመለሱ!');
+  }else{
+    const count = Math.min(6, remaining);
+    for(let i=0;i<count;i++){
+      const reward = AD_REWARDS[i % AD_REWARDS.length];
+      html += `
+        <div class="card-item">
+          <div class="ad-progress" id="ring-${i}">
+            <svg width="36" height="36"><circle class="bg" cx="18" cy="18" r="15" /><circle class="fg" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2"/></svg>
+            <div class="num" id="ringnum-${i}">▶</div>
+          </div>
+          <div class="info"><h4>Ad #${state.adsWatchedToday + i + 1}</h4><p>+${reward} ETB</p></div>
+          <button class="action-btn" onclick="watchAd(${reward}, ${i})">ይመልከቱ</button>
+        </div>`;
+    }
+  }
+  html += `<div style="text-align:center;font-size:11px;color:var(--sub);margin-top:6px;">${Math.max(remaining,0)} / ${state.dailyAdLimit} ማስታወቂያዎች ቀርተዋል ዛሬ</div>`;
+  adList.innerHTML = html;
+}
+
+function watchAd(reward, idx){
+  if(state.adsWatchedToday >= state.dailyAdLimit) return;
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerText = '...';
+
+  const ring = document.getElementById(`ring-${idx}`);
+  const numEl = document.getElementById(`ringnum-${idx}`);
+  const circle = ring.querySelector('.fg');
+  const totalTime = 5000;
+  const circumference = 94.2;
+  let elapsed = 0;
+  const step = 100;
+
+  const interval = setInterval(()=>{
+    elapsed += step;
+    const pct = Math.min(elapsed/totalTime, 1);
+    circle.style.strokeDashoffset = circumference * (1-pct);
+    numEl.innerText = Math.ceil((totalTime-elapsed)/1000) > 0 ? Math.ceil((totalTime-elapsed)/1000) : '✓';
+    if(elapsed >= totalTime){
+      clearInterval(interval);
+      completeAd();
+    }
+  }, step);
+}
+
+async function completeAd(){
+  try{
+    const res = await fetch(`${API_BASE}/watch-ad`, { method:'POST', headers: apiHeaders() });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'ስህተት ተከስቷል'); await fetchState(); return; }
+    if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    toast(`🎉 ${data.reward} ETB ወደ ሂሳብዎ ተጨምሯል!`);
+    await fetchState();
+  }catch(e){
+    toast('⚠️ ከ Server ጋር መገናኘት አልተቻለም');
+    console.error(e);
+  }
+}
+
+/* ============ Daily check-in ============ */
+async function dailyCheckin(){
+  if(state.lastCheckin === todayStr()) return;
+  try{
+    const res = await fetch(`${API_BASE}/checkin`, { method:'POST', headers: apiHeaders() });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'ስህተት ተከስቷል'); return; }
+    if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    toast('✅ 5 ETB ተጨምሯል! ነገ እንደገና ይመለሱ');
+    await fetchState();
+  }catch(e){
+    toast('⚠️ ከ Server ጋር መገናኘት አልተቻለም');
+  }
+}
+
+/* ============ Channel join (one-time) ============ */
+async function joinChannel(){
+  if(state.channelJoined){ toast('ይህን ስራ አስቀድመው አጠናቅቀዋል'); return; }
+  if(tg && tg.openTelegramLink){ tg.openTelegramLink('https://t.me/swapmoney_channel'); }
+  try{
+    const res = await fetch(`${API_BASE}/join-channel`, { method:'POST', headers: apiHeaders() });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'ስህተት ተከስቷል'); return; }
+    toast('🎉 25 ETB ለመቀላቀል ተጨምሯል!');
+    await fetchState();
+  }catch(e){
+    toast('⚠️ ከ Server ጋር መገናኘት አልተቻለም');
+  }
+}
+
+/* ============ Referral ============ */
+function copyRefLink(){
+  const linkInput = document.getElementById('refLink');
+  linkInput.select();
+  try{
+    navigator.clipboard.writeText(linkInput.value);
+  }catch(e){
+    document.execCommand('copy');
+  }
+  toast('📋 የሪፈራል ሊንክዎ ኮፒ ሆኗል!');
+  if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  // እውነተኛ ጓደኞች ማን እንደተቀላቀሉ ለማወቅ fetchState() ን ተመልሰው ይጠቀሙ (ወይም share ካደረጉ በኋላ)
+}
+
+/* ============ Leaderboard (from server) ============ */
+async function renderLeaderboard(){
+  const list = document.getElementById('leaderboardList');
+  const badgeClass = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  try{
+    const res = await fetch(`${API_BASE}/leaderboard`, { headers: apiHeaders() });
+    const top = await res.json();
+    list.innerHTML = top.map((p,i)=>`
+      <div class="lb-item">
+        <div class="rank-badge ${badgeClass(i)}">${i+1}</div>
+        <div class="lb-info"><h4>${p.username ? '@'+p.username : (p.first_name || 'ተጠቃሚ')}</h4><span>ጠቅላላ</span></div>
+        <div class="lb-amt">${p.balance.toLocaleString()} ETB</div>
+      </div>`).join('');
+  }catch(e){
+    list.innerHTML = emptyState('Leaderboard ማምጣት አልተቻለም');
+  }
+}
+
+/* ============ Withdraw ============ */
+async function handleWithdraw(e){
+  e.preventDefault();
+  const method = document.getElementById('payMethod');
+  const account = document.getElementById('payAccount').value.trim();
+  const amount = parseFloat(document.getElementById('payAmount').value);
+  const methodLabel = method.options[method.selectedIndex].text;
+
+  if(!account){ toast('እባክዎ የሂሳብ ቁጥር ያስገቡ'); return; }
+  if(isNaN(amount) || amount < 500){ toast('አነስተኛ የማውጫ መጠን 500 ETB ነው'); return; }
+  if(amount > state.balance){ toast('በቂ ቀሪ ሂሳብ የለዎትም'); return; }
+
+  try{
+    const res = await fetch(`${API_BASE}/withdraw`, {
+      method:'POST', headers: apiHeaders(),
+      body: JSON.stringify({ method: methodLabel, account, amount })
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'ስህተት ተከስቷል'); return; }
+
+    if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    toast('✅ የክፍያ ጥያቄዎ ተልኳል! በ24 ሰዓት ውስጥ ይረጋገጣል');
+    document.getElementById('withdrawForm').reset();
+    await fetchState();
+    showPage('withdraw');
+  }catch(err){
+    toast('⚠️ ከ Server ጋር መገናኘት አልተቻለም');
+  }
+}
+
+/* ============ Init ============ */
+fetchState();
+</script>
+</body>
+</html>
+

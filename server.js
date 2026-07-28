@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const setupDatabase = require('./database');
 
 const app = express();
+const path = require('path');
+app.use(express.static(path.join(__dirname)));
 
 // 1. የተስተካከለ CORS Config (ከየትኛውም ቦታ የሚመጡ ጥያቄዎችን እንዲቀበል)
 app.use(cors({
