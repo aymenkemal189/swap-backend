@@ -2,30 +2,32 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 const setupDatabase = require('./database');
 
 const app = express();
-const path = require('path');
-app.use(express.static(path.join(__dirname)));
 
-// 1. የተስተካከለ CORS Config (ከየትኛውም ቦታ የሚመጡ ጥያቄዎችን እንዲቀበል)
+// 1. CORS Setup (ከTelegram Mini App የሚመጡ ጥሪዎችን ለመፍቀድ)
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'Authorization', 'x-telegram-init-data']
+    allowedHeaders: ['Content-Type', 'X-Telegram-Init-Data', 'Authorization']
 }));
 
 app.use(express.json());
 
+// 2. Frontend HTML እና Static ፋይሎችን ማቅረቢያ
+app.use(express.static(path.join(__dirname)));
+
 let db;
 
-// 2. Telegram Authentication Middleware (ከብራውዘርም ከቴሌግራምም እንዲሰራ ተደርጎ የተስተካከለ)
+// 3. Telegram Authentication Middleware
 function verifyTelegramWebAppData(req, res, next) {
-    const initData = req.headers['x-telegram-init-data'] || req.headers['X-Telegram-Init-Data'];
+    const initData = req.headers['x-telegram-init-data'];
     
-    // በብራውዘር ወይም ያለ Telegram InitData ሲሞከር በDemo Account እንዲሰራ
+    // በልማት (Development) ወቅት ወይም initData ከሌለ ለመሞከር
     if (!initData) {
-        req.user = { id: 123456789, username: 'demo_user', first_name: 'Demo User' };
+        req.user = { id: 123456789, username: 'testuser', first_name: 'Test' };
         return next();
     }
 
@@ -39,39 +41,38 @@ function verifyTelegramWebAppData(req, res, next) {
             .sort()
             .join('\n');
 
-        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(process.env.BOT_TOKEN || '').digest();
+        const botToken = process.env.BOT_TOKEN || '';
+        if (!botToken) {
+            console.warn("⚠️ BOT_TOKEN በ Render Environment Variables ላይ አልተካተተም!");
+        }
+
+        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
         const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
         if (calculatedHash === hash) {
             req.user = JSON.parse(urlParams.get('user'));
             return next();
         } else {
-            // Hash ባይገጥም እንኳ ለሙከራ እንዲያልፍ (Production ላይ ካስፈለገ በጥብቅ መዝጋት ይቻላል)
-            const userParam = urlParams.get('user');
-            if (userParam) {
-                req.user = JSON.parse(userParam);
-                return next();
-            }
-            req.user = { id: 123456789, username: 'demo_user', first_name: 'Demo User' };
-            return next();
+            return res.status(403).json({ error: 'invalid_auth' });
         }
     } catch (e) {
-        req.user = { id: 123456789, username: 'demo_user', first_name: 'Demo User' };
-        return next();
+        return res.status(400).json({ error: 'bad_request' });
     }
 }
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+// Helper: ተጠቃሚውን ከዳታቤዝ መፈለግ ወይም መፍጠር
 async function getOrCreateUser(tgUser) {
     let user = await db.get('SELECT * FROM users WHERE id = ?', [tgUser.id]);
     if (!user) {
         await db.run(
             'INSERT INTO users (id, username, first_name) VALUES (?, ?, ?)',
-            [tgUser.id, tgUser.username || '', tgUser.first_name || 'User']
+            [tgUser.id, tgUser.username || '', tgUser.first_name || '']
         );
         user = await db.get('SELECT * FROM users WHERE id = ?', [tgUser.id]);
     }
+    // የቀን Ad limit reset ማድረግ
     if (user.last_ad_date !== todayStr()) {
         await db.run('UPDATE users SET ads_watched_today = 0, last_ad_date = ? WHERE id = ?', [todayStr(), user.id]);
         user.ads_watched_today = 0;
@@ -88,18 +89,18 @@ app.get('/api/state', verifyTelegramWebAppData, async (req, res) => {
         const withdrawals = await db.all('SELECT * FROM withdrawals WHERE user_id = ? ORDER BY id DESC', [user.id]);
 
         res.json({
-            balance: user.balance || 0,
-            adsWatchedToday: user.ads_watched_today || 0,
-            totalAdsWatched: user.total_ads_watched || 0,
+            balance: user.balance,
+            adsWatchedToday: user.ads_watched_today,
+            totalAdsWatched: user.total_ads_watched,
             dailyAdLimit: 15,
-            lastCheckin: user.last_checkin || '',
+            lastCheckin: user.last_checkin,
             channelJoined: Boolean(user.channel_joined),
-            activity: activities || [],
-            referrals: referrals || [],
-            withdrawals: withdrawals || []
+            activity: activities,
+            referrals: referrals,
+            withdrawals: withdrawals
         });
     } catch (e) {
-        console.error("State Error:", e);
+        console.error("Error in /api/state:", e);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -126,6 +127,7 @@ app.post('/api/watch-ad', verifyTelegramWebAppData, async (req, res) => {
 
         res.json({ success: true, reward });
     } catch (e) {
+        console.error("Error in /api/watch-ad:", e);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -143,6 +145,7 @@ app.post('/api/checkin', verifyTelegramWebAppData, async (req, res) => {
 
         res.json({ success: true, reward });
     } catch (e) {
+        console.error("Error in /api/checkin:", e);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -160,6 +163,7 @@ app.post('/api/join-channel', verifyTelegramWebAppData, async (req, res) => {
 
         res.json({ success: true, reward });
     } catch (e) {
+        console.error("Error in /api/join-channel:", e);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -167,8 +171,9 @@ app.post('/api/join-channel', verifyTelegramWebAppData, async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const topUsers = await db.all('SELECT username, first_name, balance FROM users ORDER BY balance DESC LIMIT 10');
-        res.json(topUsers || []);
+        res.json(topUsers);
     } catch (e) {
+        console.error("Error in /api/leaderboard:", e);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -193,16 +198,22 @@ app.post('/api/withdraw', verifyTelegramWebAppData, async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
+        console.error("Error in /api/withdraw:", e);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Server ማስነሳት
+// 4. Any other route serves index.html (Frontend fallback)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// 5. Start Server
 setupDatabase().then(database => {
     db = database;
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 10000;
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 }).catch(err => {
-    console.error("Database connection failed:", err);
+    console.error(" Database Connection Failed:", err);
 });
 
