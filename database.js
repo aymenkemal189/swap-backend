@@ -1,19 +1,20 @@
 const initSqlJs = require('sql.js');
 const fs = require('fs');
-const path = require('path');
+const path = require('path'); 
 
-const dbPath = path.join(__dirname, 'swap_database.db');
+const dbPath = path.join(__dirname, 'swap_database.db'); 
 
 async function setupDatabase() {
     const SQL = await initSqlJs();
-    let db;
+    let db; 
 
+    // Render ላይ መጀመሪያ ሲነሳ ፋይሉ ከሌለ አዲስ ይፈጥራል
     if (fs.existsSync(dbPath)) {
         const filebuffer = fs.readFileSync(dbPath);
         db = new SQL.Database(filebuffer);
     } else {
         db = new SQL.Database();
-    }
+    } 
 
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
@@ -27,7 +28,7 @@ async function setupDatabase() {
             last_checkin TEXT,
             channel_joined INTEGER DEFAULT 0,
             referred_by INTEGER
-        );
+        ); 
 
         CREATE TABLE IF NOT EXISTS activities (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +37,7 @@ async function setupDatabase() {
             amount REAL,
             status TEXT,
             date TEXT
-        );
+        ); 
 
         CREATE TABLE IF NOT EXISTS withdrawals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,14 +48,14 @@ async function setupDatabase() {
             status TEXT,
             date TEXT
         );
-    `);
+    `); 
 
     // Helper Functions for Promise Compatibility
     const save = () => {
         const data = db.export();
         const buffer = Buffer.from(data);
         fs.writeFileSync(dbPath, buffer);
-    };
+    }; 
 
     return {
         get: async (sql, params = []) => {
@@ -84,8 +85,7 @@ async function setupDatabase() {
             return { lastID: db.exec("SELECT last_insert_rowid()")[0]?.values[0][0] };
         }
     };
-}
+} 
 
 module.exports = setupDatabase;
-
 
