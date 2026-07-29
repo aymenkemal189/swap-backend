@@ -204,7 +204,7 @@ app.post('/api/withdraw', verifyTelegramWebAppData, async (req, res) => {
 }); 
 
 // 4. Any other route serves index.html (Frontend fallback)
-app.get('*', (req, res) => {
+// የድሮውን app.get('*', ...) 
     res.sendFile(path.join(__dirname, 'index.html'));
 }); 
 
@@ -220,5 +220,6 @@ setupDatabase().then(database => {
 }).catch(err => {
     console.error("❌ Database Connection Failed:", err);
 });
+
 
 
