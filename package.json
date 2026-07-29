@@ -9,11 +9,6 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
-    "express-rate-limit": "^7.2.0",
-    "sql.js": "^1.11.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sql.js": "^1.11.0"
   }
 }
-
-
